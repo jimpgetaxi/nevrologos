@@ -92,6 +92,13 @@ fun HomeScreen(viewModel: MainViewModel) {
                 ) {
                     Text("Εικόνα")
                 }
+                Button(
+                    onClick = { viewModel.startEdssCalculation() },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
+                ) {
+                    Text("EDSS")
+                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))

@@ -47,16 +47,37 @@ class MainViewModel @Inject constructor(
     var chatLoading by mutableStateOf(false)
         private set
 
+    var isEdssMode by mutableStateOf(false)
+        private set
+
+    private val edssHistory = mutableListOf<com.google.ai.client.generativeai.type.Content>()
+
     init {
         loadModels()
+    }
+
+    fun startEdssCalculation() {
+        isEdssMode = true
+        chatMessages.clear()
+        edssHistory.clear()
+        chatMessages.add("AI" to "Ξεκινάμε τον υπολογισμό της κλίμακας EDSS. Πείτε μου, πόσα μέτρα μπορείτε να περπατήσετε χωρίς βοήθεια ή ξεκούραση;")
     }
 
     fun sendChatQuery(query: String) {
         viewModelScope.launch {
             chatMessages.add("User" to query)
             chatLoading = true
-            val response = aiRepository.getAiDiagnosis(query) // Reusing the same AI logic for now
-            chatMessages.add("AI" to response)
+            
+            if (isEdssMode) {
+                val response = aiRepository.startEdssFlow(query, edssHistory.toList())
+                chatMessages.add("AI" to response)
+                // Update history for next turn
+                edssHistory.add(com.google.ai.client.generativeai.type.content("user") { text(query) })
+                edssHistory.add(com.google.ai.client.generativeai.type.content("model") { text(response) })
+            } else {
+                val response = aiRepository.getAiDiagnosis(query)
+                chatMessages.add("AI" to response)
+            }
             chatLoading = false
         }
     }

@@ -81,4 +81,26 @@ class AiRepository @Inject constructor(
             "Σφάλμα κατά την ανάλυση του αρχείου: ${e.message}"
         }
     }
+
+    suspend fun startEdssFlow(userMessage: String, chatHistory: List<com.google.ai.client.generativeai.type.Content>): String {
+        val generativeModel = GenerativeModel(
+            modelName = currentModelName,
+            apiKey = BuildConfig.GEMINI_API_KEY,
+            systemInstruction = com.google.ai.client.generativeai.type.content {
+                text("Είσαι ένας εξειδικευμένος Νευρολόγος. Ο στόχος σου είναι να υπολογίσεις την κλίμακα EDSS (Expanded Disability Status Scale) του χρήστη. " +
+                        "Θα κάνεις μια ερώτηση κάθε φορά. Ξεκίνα ρωτώντας για την ικανότητα βάδισης (πόσα μέτρα χωρίς βοήθεια). " +
+                        "Συνέχισε με ερωτήσεις για την όραση, την ισορροπία, και τον έλεγχο των άκρων. " +
+                        "Στο τέλος κάθε απάντησης, αν έχεις αρκετά δεδομένα, δώσε μια εκτίμηση του EDSS (π.χ. 3.5) και εξήγησε γιατί. " +
+                        "Όλη η συζήτηση πρέπει να είναι στα Ελληνικά, με σεβασμό και ιατρική ακρίβεια.")
+            }
+        )
+
+        val chat = generativeModel.startChat(chatHistory)
+        return try {
+            val response = chat.sendMessage(userMessage)
+            response.text ?: "Δεν μπόρεσα να επεξεργαστώ την απάντηση για το EDSS."
+        } catch (e: Exception) {
+            "Σφάλμα κατά τον υπολογισμό EDSS: ${e.message}"
+        }
+    }
 }
