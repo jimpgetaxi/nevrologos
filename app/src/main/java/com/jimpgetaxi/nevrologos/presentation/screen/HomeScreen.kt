@@ -8,7 +8,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,6 +24,7 @@ fun HomeScreen(viewModel: MainViewModel) {
     val profiles by viewModel.profiles.collectAsState()
     val currentProfile = profiles.firstOrNull()
     var chatInput by remember { mutableStateOf("") }
+    var showSymptomDialog by remember { mutableStateOf(false) }
     
     val context = androidx.compose.ui.platform.LocalContext.current
     
@@ -32,17 +34,36 @@ fun HomeScreen(viewModel: MainViewModel) {
         viewModel.onDocumentSelected(context, uri)
     }
 
+    if (showSymptomDialog) {
+        SymptomLogDialog(
+            onDismiss = { showSymptomDialog = false },
+            onConfirm = { type, severity ->
+                viewModel.saveSymptom(type, severity)
+                showSymptomDialog = false
+            }
+        )
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
     ) {
         if (currentProfile != null) {
-            Text(
-                text = "Προσωπικός Νευρολόγος AI",
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.primary
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Νευρολόγος AI",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                IconButton(onClick = { showSymptomDialog = true }) {
+                    Icon(Icons.Default.Add, contentDescription = "Log Symptom", tint = MaterialTheme.colorScheme.primary)
+                }
+            }
             
             Spacer(modifier = Modifier.height(8.dp))
             
@@ -55,9 +76,8 @@ fun HomeScreen(viewModel: MainViewModel) {
                     .padding(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Initial Diagnosis as first message
                 item {
-                    ChatMessageBubble("AI", "Καλώς ήρθες ${currentProfile.fullName}. Η αρχική σου διάγνωση είναι: ${currentProfile.diagnosis}")
+                    ChatMessageBubble("AI", "Καλώς ήρθες ${currentProfile.fullName}. Πώς μπορώ να σε βοηθήσω σήμερα;")
                 }
                 
                 items(viewModel.chatMessages) { message ->
@@ -78,19 +98,8 @@ fun HomeScreen(viewModel: MainViewModel) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Button(
-                    onClick = { filePickerLauncher.launch("application/pdf") },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-                ) {
-                    Text("PDF")
-                }
-                Button(
-                    onClick = { filePickerLauncher.launch("image/*") },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
-                ) {
-                    Text("Εικόνα")
+                Button(onClick = { filePickerLauncher.launch("*/*") }, modifier = Modifier.weight(1f)) {
+                    Text("Αρχείο")
                 }
                 Button(
                     onClick = { viewModel.startEdssCalculation() },
@@ -98,6 +107,13 @@ fun HomeScreen(viewModel: MainViewModel) {
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
                 ) {
                     Text("EDSS")
+                }
+                Button(
+                    onClick = { viewModel.startDietAnalysis() },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9800))
+                ) {
+                    Text("Διατροφή")
                 }
             }
 
@@ -111,7 +127,7 @@ fun HomeScreen(viewModel: MainViewModel) {
                 TextField(
                     value = chatInput,
                     onValueChange = { chatInput = it },
-                    placeholder = { Text("Ρωτήστε κάτι τον νευρολόγο...") },
+                    placeholder = { Text(if (viewModel.isDietMode) "Περιγράψτε το γεύμα σας..." else "Ρωτήστε κάτι...") },
                     modifier = Modifier.weight(1f),
                     maxLines = 3
                 )
@@ -124,7 +140,7 @@ fun HomeScreen(viewModel: MainViewModel) {
                     },
                     enabled = chatInput.isNotBlank() && !viewModel.chatLoading
                 ) {
-                    Icon(Icons.Default.Send, contentDescription = "Send", tint = MaterialTheme.colorScheme.primary)
+                    Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", tint = MaterialTheme.colorScheme.primary)
                 }
             }
         } else {
@@ -136,10 +152,46 @@ fun HomeScreen(viewModel: MainViewModel) {
 }
 
 @Composable
+fun SymptomLogDialog(onDismiss: () -> Unit, onConfirm: (String, Int) -> Unit) {
+    var type by remember { mutableStateOf("Μούδιασμα") }
+    var severity by remember { mutableFloatStateOf(5f) }
+    val symptoms = listOf("Μούδιασμα", "Κόπωση", "Θολή Όραση", "Αδυναμία", "Πόνος", "Άλλο")
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Καταγραφή Συμπτώματος") },
+        text = {
+            Column {
+                Text("Τύπος Συμπτώματος:")
+                var expanded by remember { mutableStateOf(false) }
+                Box {
+                    TextButton(onClick = { expanded = true }) { Text(type) }
+                    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                        symptoms.forEach { s ->
+                            DropdownMenuItem(text = { Text(s) }, onClick = { type = s; expanded = false })
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("Ένταση: ${severity.toInt()}")
+                Slider(value = severity, onValueChange = { severity = it }, valueRange = 1f..10f, steps = 8)
+            }
+        },
+        confirmButton = {
+            Button(onClick = { onConfirm(type, severity.toInt()) }) { Text("Αποθήκευση") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Ακύρωση") }
+        }
+    )
+}
+
+@Composable
 fun ChatMessageBubble(role: String, content: String) {
     val backgroundColor = when (role) {
         "User" -> MaterialTheme.colorScheme.primaryContainer
         "AI" -> MaterialTheme.colorScheme.secondaryContainer
+        "System" -> MaterialTheme.colorScheme.tertiaryContainer
         else -> Color.LightGray
     }
     
@@ -148,12 +200,13 @@ fun ChatMessageBubble(role: String, content: String) {
     Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = alignment) {
         Box(
             modifier = Modifier
+                .padding(vertical = 2.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .background(backgroundColor)
                 .padding(12.dp)
         ) {
             Text(text = content, style = MaterialTheme.typography.bodyMedium)
         }
-        Text(text = role, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 2.dp, start = 4.dp, end = 4.dp))
+        Text(text = role, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 1.dp, start = 4.dp, end = 4.dp))
     }
 }

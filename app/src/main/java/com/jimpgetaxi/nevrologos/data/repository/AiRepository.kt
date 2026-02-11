@@ -103,4 +103,31 @@ class AiRepository @Inject constructor(
             "Σφάλμα κατά τον υπολογισμό EDSS: ${e.message}"
         }
     }
+
+    suspend fun analyzeDiet(input: Any, mimeType: String?, dietType: String): String {
+        val generativeModel = GenerativeModel(
+            modelName = currentModelName,
+            apiKey = BuildConfig.GEMINI_API_KEY,
+            systemInstruction = com.google.ai.client.generativeai.type.content {
+                text("Είσαι ένας εξειδικευμένος Διατροφολόγος με εμπειρία στην Σκλήρυνση Κατά Πλάκας. " +
+                        "Γνωρίζεις άριστα τα πρωτόκολλα Swank (χαμηλά κορεσμένα λιπαρά), Wahls (υψηλή θρεπτική πυκνότητα, παλαιο-διατροφή) και Μεσογειακή διατροφή. " +
+                        "Ο χρήστης ακολουθεί τη διατροφή: $dietType. " +
+                        "Ανάλυσε το γεύμα (από κείμενο ή φωτογραφία) και πες του αν είναι συμβατό, τι να προσέξει και δώσε μια συμβουλή βελτίωσης.")
+            }
+        )
+
+        return try {
+            val content = com.google.ai.client.generativeai.type.content {
+                if (input is ByteArray && mimeType != null) {
+                    blob(mimeType, input)
+                } else if (input is String) {
+                    text(input)
+                }
+            }
+            val response = generativeModel.generateContent(content)
+            response.text ?: "Δεν μπόρεσα να αναλύσω τη διατροφή."
+        } catch (e: Exception) {
+            "Σφάλμα κατά τη διατροφική ανάλυση: ${e.message}"
+        }
+    }
 }

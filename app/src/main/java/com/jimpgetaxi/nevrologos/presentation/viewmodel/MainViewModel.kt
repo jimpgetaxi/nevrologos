@@ -50,17 +50,33 @@ class MainViewModel @Inject constructor(
     var isEdssMode by mutableStateOf(false)
         private set
 
+    var isDietMode by mutableStateOf(false)
+        private set
+
     private val edssHistory = mutableListOf<com.google.ai.client.generativeai.type.Content>()
 
     init {
         loadModels()
     }
 
-    fun startEdssCalculation() {
-        isEdssMode = true
-        chatMessages.clear()
-        edssHistory.clear()
-        chatMessages.add("AI" to "Ξεκινάμε τον υπολογισμό της κλίμακας EDSS. Πείτε μου, πόσα μέτρα μπορείτε να περπατήσετε χωρίς βοήθεια ή ξεκούραση;")
+    fun startDietAnalysis() {
+        isDietMode = true
+        isEdssMode = false
+        chatMessages.add("AI" to "Είμαι ο διατροφικός σας σύμβουλος. Στείλτε μου μια φωτογραφία του γεύματός σας ή περιγράψτε τι φάγατε για να δούμε αν ταιριάζει στο πρωτόκολλό σας.")
+    }
+
+    fun saveSymptom(type: String, severity: Int) {
+        viewModelScope.launch {
+            val profile = profiles.value.firstOrNull() ?: return@launch
+            val entry = com.jimpgetaxi.nevrologos.data.entity.SymptomEntry(
+                ownerId = profile.userId,
+                timestamp = System.currentTimeMillis(),
+                symptomType = type,
+                severity = severity
+            )
+            repository.insertSymptomEntry(entry)
+            chatMessages.add("System" to "Το σύμπτωμα '$type' με ένταση $severity καταγράφηκε επιτυχώς.")
+        }
     }
 
     fun sendChatQuery(query: String) {
@@ -68,10 +84,14 @@ class MainViewModel @Inject constructor(
             chatMessages.add("User" to query)
             chatLoading = true
             
-            if (isEdssMode) {
+            val profile = profiles.value.firstOrNull()
+            
+            if (isDietMode) {
+                val response = aiRepository.analyzeDiet(query, null, profile?.dietType ?: "Mediterranean")
+                chatMessages.add("AI" to response)
+            } else if (isEdssMode) {
                 val response = aiRepository.startEdssFlow(query, edssHistory.toList())
                 chatMessages.add("AI" to response)
-                // Update history for next turn
                 edssHistory.add(com.google.ai.client.generativeai.type.content("user") { text(query) })
                 edssHistory.add(com.google.ai.client.generativeai.type.content("model") { text(response) })
             } else {
@@ -96,7 +116,12 @@ class MainViewModel @Inject constructor(
                     inputStream?.close()
 
                     if (bytes != null) {
-                        val analysis = aiRepository.analyzeMedicalFile(bytes, mimeType)
+                        val analysis = if (isDietMode) {
+                            val profile = profiles.value.firstOrNull()
+                            aiRepository.analyzeDiet(bytes, mimeType, profile?.dietType ?: "Mediterranean")
+                        } else {
+                            aiRepository.analyzeMedicalFile(bytes, mimeType)
+                        }
                         chatMessages.add("AI" to analysis)
                     } else {
                         chatMessages.add("System" to "Αποτυχία ανάγνωσης αρχείου.")
@@ -108,6 +133,14 @@ class MainViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    fun startEdssCalculation() {
+        isEdssMode = true
+        isDietMode = false
+        chatMessages.clear()
+        edssHistory.clear()
+        chatMessages.add("AI" to "Ξεκινάμε τον υπολογισμό της κλίμακας EDSS. Πείτε μου, πόσα μέτρα μπορείτε να περπατήσετε χωρίς βοήθεια ή ξεκούραση;")
     }
 
     fun loadModels() {
