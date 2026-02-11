@@ -21,25 +21,18 @@ class AiRepository @Inject constructor(
 
     suspend fun fetchAvailableModels(): List<AiModel> {
         return try {
-            android.util.Log.d("AiRepository", "Starting to fetch models with API Key...")
+            android.util.Log.d("AiRepository", "Attempting API call to fetch models...")
             val response = aiService.getModels(BuildConfig.GEMINI_API_KEY)
-            android.util.Log.d("AiRepository", "Raw API Response: Fetched ${response.models.size} models")
+            val models = response.models
+            android.util.Log.d("AiRepository", "Successfully fetched ${models.size} models")
             
-            // Log all names to see what we are getting
-            response.models.forEach { 
-                android.util.Log.d("AiRepository", "Model found: ${it.name} | Display: ${it.displayName}")
-            }
-
-            // Minimal filter: just make sure it's a gemini model and not a known text-only legacy model if we want
-            val filtered = response.models.filter { 
-                it.name.contains("gemini", ignoreCase = true)
-            }.sortedByDescending { it.name }
+            val geminiModels = models.filter { it.name.contains("gemini", ignoreCase = true) }
+            android.util.Log.d("AiRepository", "Found ${geminiModels.size} Gemini models")
             
-            android.util.Log.d("AiRepository", "Filtered to ${filtered.size} Gemini models")
-            filtered
+            geminiModels.sortedByDescending { it.name }
         } catch (e: Exception) {
-            android.util.Log.e("AiRepository", "FATAL Error fetching models: ${e.message}", e)
-            emptyList()
+            android.util.Log.e("AiRepository", "Error during fetch: ${e.localizedMessage}")
+            throw e // Rethrow to handle in ViewModel
         }
     }
 

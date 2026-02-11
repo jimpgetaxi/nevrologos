@@ -1,6 +1,7 @@
 package com.jimpgetaxi.nevrologos.presentation.viewmodel
 
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
@@ -28,6 +29,9 @@ class MainViewModel @Inject constructor(
     var availableModels by mutableStateOf<List<com.jimpgetaxi.nevrologos.data.network.AiModel>>(emptyList())
         private set
 
+    var errorMessage by mutableStateOf<String?>(null)
+        private set
+
     var selectedModel by mutableStateOf("gemini-2.0-flash")
         private set
 
@@ -37,12 +41,48 @@ class MainViewModel @Inject constructor(
     var diagnosisLoading by mutableStateOf(false)
         private set
 
+    var chatMessages = mutableStateListOf<Pair<String, String>>() // Role to Content
+        private set
+
+    var chatLoading by mutableStateOf(false)
+        private set
+
     init {
+        loadModels()
+    }
+
+    fun sendChatQuery(query: String) {
         viewModelScope.launch {
-            availableModels = aiRepository.fetchAvailableModels()
-            if (availableModels.isNotEmpty()) {
-                val best = availableModels.first().name.replace("models/", "")
-                selectModel(best)
+            chatMessages.add("User" to query)
+            chatLoading = true
+            val response = aiRepository.getAiDiagnosis(query) // Reusing the same AI logic for now
+            chatMessages.add("AI" to response)
+            chatLoading = false
+        }
+    }
+
+    fun onDocumentSelected(uri: android.net.Uri?) {
+        // For now, we just log it. In next step we will implement the AI analysis of the file.
+        uri?.let {
+            chatMessages.add("System" to "Επιλέχθηκε αρχείο: ${it.lastPathSegment}. Η ανάλυση εγγράφων θα υλοποιηθεί στο επόμενο βήμα.")
+        }
+    }
+
+    fun loadModels() {
+        viewModelScope.launch {
+            try {
+                errorMessage = null
+                val fetched = aiRepository.fetchAvailableModels()
+                if (fetched.isNotEmpty()) {
+                    availableModels = fetched
+                    val best = fetched.first().name.replace("models/", "")
+                    selectModel(best)
+                } else {
+                    errorMessage = "Δεν βρέθηκαν μοντέλα"
+                }
+            } catch (e: Exception) {
+                errorMessage = "Σφάλμα φόρτωσης: ${e.localizedMessage}"
+                availableModels = emptyList()
             }
         }
     }

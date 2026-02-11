@@ -35,6 +35,14 @@ fun ProfileSetupScreen(viewModel: MainViewModel, onProfileCreated: () -> Unit) {
         )
 
         Text("Επιλογή Μοντέλου AI:", style = MaterialTheme.typography.titleMedium)
+        
+        viewModel.errorMessage?.let { error ->
+            Text(error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            Button(onClick = { viewModel.loadModels() }, modifier = Modifier.padding(top = 4.dp)) {
+                Text("Προσπάθεια ξανά")
+            }
+        }
+
         Box(modifier = Modifier.fillMaxWidth()) {
             OutlinedButton(
                 onClick = { expanded = true },

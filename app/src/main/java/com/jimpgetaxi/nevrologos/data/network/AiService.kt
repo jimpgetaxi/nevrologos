@@ -20,6 +20,6 @@ data class ModelsResponse(
 data class AiModel(
     val name: String,
     val displayName: String,
-    val description: String,
+    val description: String? = null,
     val supportedGenerationMethods: List<String> = emptyList()
 )
