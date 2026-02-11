@@ -21,16 +21,24 @@ class AiRepository @Inject constructor(
 
     suspend fun fetchAvailableModels(): List<AiModel> {
         return try {
+            android.util.Log.d("AiRepository", "Starting to fetch models with API Key...")
             val response = aiService.getModels(BuildConfig.GEMINI_API_KEY)
-            android.util.Log.d("AiRepository", "Fetched ${response.models.size} models from API")
-            response.models.filter { 
-                it.name.contains("gemini", ignoreCase = true) && 
-                it.supportedGenerationMethods.contains("generateContent")
-            }.sortedByDescending { it.name }.also {
-                android.util.Log.d("AiRepository", "Filtered to ${it.size} Gemini models")
+            android.util.Log.d("AiRepository", "Raw API Response: Fetched ${response.models.size} models")
+            
+            // Log all names to see what we are getting
+            response.models.forEach { 
+                android.util.Log.d("AiRepository", "Model found: ${it.name} | Display: ${it.displayName}")
             }
+
+            // Minimal filter: just make sure it's a gemini model and not a known text-only legacy model if we want
+            val filtered = response.models.filter { 
+                it.name.contains("gemini", ignoreCase = true)
+            }.sortedByDescending { it.name }
+            
+            android.util.Log.d("AiRepository", "Filtered to ${filtered.size} Gemini models")
+            filtered
         } catch (e: Exception) {
-            android.util.Log.e("AiRepository", "Error fetching models", e)
+            android.util.Log.e("AiRepository", "FATAL Error fetching models: ${e.message}", e)
             emptyList()
         }
     }
