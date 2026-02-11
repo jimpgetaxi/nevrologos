@@ -14,7 +14,7 @@ fun ProfileSetupScreen(viewModel: MainViewModel, onProfileCreated: () -> Unit) {
     var name by remember { mutableStateOf("") }
     var symptoms by remember { mutableStateOf("") }
     var diet by remember { mutableStateOf("Mediterranean") }
-    var showDiagnosisResult by remember { mutableStateOf(false) }
+    var expanded by remember { mutableStateOf(false) }
 
     val scrollState = rememberScrollState()
 
@@ -34,7 +34,38 @@ fun ProfileSetupScreen(viewModel: MainViewModel, onProfileCreated: () -> Unit) {
             modifier = Modifier.fillMaxWidth()
         )
 
-        Text("Περιγράψτε τα συμπτώματά σας ή το ιστορικό σας για AI Διάγνωση:", style = MaterialTheme.typography.titleMedium)
+        Text("Επιλογή Μοντέλου AI:", style = MaterialTheme.typography.titleMedium)
+        Box {
+            OutlinedButton(
+                onClick = { expanded = true },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Μοντέλο: ${viewModel.selectedModel}")
+            }
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                viewModel.availableModels.forEach { model ->
+                    val cleanName = model.name.replace("models/", "")
+                    DropdownMenuItem(
+                        text = { 
+                            Column {
+                                Text(model.displayName, style = MaterialTheme.typography.bodyLarge)
+                                Text(cleanName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+                            }
+                        },
+                        onClick = {
+                            viewModel.selectModel(cleanName)
+                            expanded = false
+                        }
+                    )
+                }
+            }
+        }
+
+        Text("Περιγράψτε τα συμπτώματά σας:", style = MaterialTheme.typography.titleMedium)
         
         OutlinedTextField(
             value = symptoms,

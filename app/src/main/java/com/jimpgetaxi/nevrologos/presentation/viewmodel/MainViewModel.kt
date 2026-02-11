@@ -25,6 +25,12 @@ class MainViewModel @Inject constructor(
     val profiles: StateFlow<List<UserProfile>> = repository.getAllProfiles()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    var availableModels by mutableStateOf<List<com.jimpgetaxi.nevrologos.data.network.AiModel>>(emptyList())
+        private set
+
+    var selectedModel by mutableStateOf("gemini-2.0-flash")
+        private set
+
     var tempDiagnosis by mutableStateOf("")
         private set
 
@@ -33,8 +39,17 @@ class MainViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            aiRepository.fetchAvailableModels()
+            availableModels = aiRepository.fetchAvailableModels()
+            if (availableModels.isNotEmpty()) {
+                val best = availableModels.first().name.replace("models/", "")
+                selectModel(best)
+            }
         }
+    }
+
+    fun selectModel(modelName: String) {
+        selectedModel = modelName
+        aiRepository.setModel(modelName)
     }
 
     fun getAiDiagnosisSuggestion(symptoms: String) {

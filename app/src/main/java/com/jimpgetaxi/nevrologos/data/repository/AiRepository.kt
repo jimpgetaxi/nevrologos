@@ -11,27 +11,22 @@ import javax.inject.Singleton
 class AiRepository @Inject constructor(
     private val aiService: AiService
 ) {
-    private var currentModelName = "gemini-2.0-flash" // Updated default
+    private var currentModelName = "gemini-2.0-flash"
+
+    fun setModel(modelName: String) {
+        currentModelName = modelName.replace("models/", "")
+    }
+
+    fun getCurrentModel(): String = currentModelName
 
     suspend fun fetchAvailableModels(): List<AiModel> {
         return try {
             val response = aiService.getModels(BuildConfig.GEMINI_API_KEY)
-            // Filter models that support generateContent
-            val filtered = response.models.filter { 
-                it.name.contains("gemini") && !it.name.contains("vision") 
-            }
-            if (filtered.isNotEmpty()) {
-                // Priority: gemini-3 > gemini-2.5 > gemini-2.0 > gemini-1.5
-                val best = filtered.find { it.name.contains("gemini-3") } 
-                    ?: filtered.find { it.name.contains("gemini-2.5") }
-                    ?: filtered.find { it.name.contains("gemini-2.0") }
-                    ?: filtered.find { it.name.contains("gemini-1.5-pro") }
-                    ?: filtered.first()
-                
-                // CRITICAL: Remove "models/" prefix for the GenerativeModel constructor
-                currentModelName = best.name.replace("models/", "")
-            }
-            filtered
+            response.models.filter { 
+                it.name.contains("gemini") && 
+                !it.name.contains("vision") &&
+                !it.description.contains("deprecated", ignoreCase = true)
+            }.sortedByDescending { it.name }
         } catch (e: Exception) {
             emptyList()
         }
