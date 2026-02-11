@@ -35,7 +35,7 @@ fun ProfileSetupScreen(viewModel: MainViewModel, onProfileCreated: () -> Unit) {
         )
 
         Text("Επιλογή Μοντέλου AI:", style = MaterialTheme.typography.titleMedium)
-        Box {
+        Box(modifier = Modifier.fillMaxWidth()) {
             OutlinedButton(
                 onClick = { expanded = true },
                 modifier = Modifier.fillMaxWidth()
@@ -45,8 +45,14 @@ fun ProfileSetupScreen(viewModel: MainViewModel, onProfileCreated: () -> Unit) {
             DropdownMenu(
                 expanded = expanded,
                 onDismissRequest = { expanded = false },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(0.9f)
             ) {
+                if (viewModel.availableModels.isEmpty()) {
+                    DropdownMenuItem(
+                        text = { Text("Φόρτωση μοντέλων...") },
+                        onClick = { }
+                    )
+                }
                 viewModel.availableModels.forEach { model ->
                     val cleanName = model.name.replace("models/", "")
                     DropdownMenuItem(
@@ -99,7 +105,7 @@ fun ProfileSetupScreen(viewModel: MainViewModel, onProfileCreated: () -> Unit) {
             }
         }
 
-        Divider()
+        HorizontalDivider()
 
         Text("Επιλογή Διατροφικού Πρωτοκόλλου:", style = MaterialTheme.typography.titleMedium)
         listOf("Mediterranean", "Swank", "Wahls").forEach { type ->
