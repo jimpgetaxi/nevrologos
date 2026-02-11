@@ -24,10 +24,12 @@ fun HomeScreen(viewModel: MainViewModel) {
     val currentProfile = profiles.firstOrNull()
     var chatInput by remember { mutableStateOf("") }
     
+    val context = androidx.compose.ui.platform.LocalContext.current
+    
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
-        viewModel.onDocumentSelected(uri)
+        viewModel.onDocumentSelected(context, uri)
     }
 
     Column(

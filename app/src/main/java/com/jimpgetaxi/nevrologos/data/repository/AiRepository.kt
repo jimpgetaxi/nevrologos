@@ -56,4 +56,29 @@ class AiRepository @Inject constructor(
             "Σφάλμα κατά την επικοινωνία με το AI: ${e.message}"
         }
     }
+
+    suspend fun analyzeMedicalFile(fileBytes: ByteArray, mimeType: String, prompt: String = "Ανάλυσε αυτό το ιατρικό έγγραφο/εικόνα και εξήγησε τα ευρήματα στα Ελληνικά."): String {
+        val generativeModel = GenerativeModel(
+            modelName = currentModelName,
+            apiKey = BuildConfig.GEMINI_API_KEY,
+            systemInstruction = com.google.ai.client.generativeai.type.content {
+                text("Είσαι ένας εξειδικευμένος Νευρολόγος. Ανάλυσε τις ιατρικές εξετάσεις (εικόνες ή PDF) που σου στέλνει ο χρήστης. " +
+                        "Εξήγησε τα αποτελέσματα με απλά αλλά επιστημονικά λόγια στα Ελληνικά. " +
+                        "Αν πρόκειται για μαγνητική (MRI), εστίασε σε απομυελινωτικές εστίες. " +
+                        "Αν πρόκειται για αιματολογικές, έλεγξε επίπεδα Βιταμίνης D, B12 και λευκά αιμοσφαίρια.")
+            }
+        )
+
+        val inputContent = com.google.ai.client.generativeai.type.content {
+            blob(mimeType, fileBytes)
+            text(prompt)
+        }
+
+        return try {
+            val response = generativeModel.generateContent(inputContent)
+            response.text ?: "Δεν μπόρεσα να αναλύσω το αρχείο."
+        } catch (e: Exception) {
+            "Σφάλμα κατά την ανάλυση του αρχείου: ${e.message}"
+        }
+    }
 }

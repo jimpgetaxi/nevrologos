@@ -61,10 +61,31 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun onDocumentSelected(uri: android.net.Uri?) {
-        // For now, we just log it. In next step we will implement the AI analysis of the file.
-        uri?.let {
-            chatMessages.add("System" to "Επιλέχθηκε αρχείο: ${it.lastPathSegment}. Η ανάλυση εγγράφων θα υλοποιηθεί στο επόμενο βήμα.")
+    fun onDocumentSelected(context: android.content.Context, uri: android.net.Uri?) {
+        uri?.let { selectedUri ->
+            viewModelScope.launch {
+                chatLoading = true
+                chatMessages.add("System" to "Ξεκινάει η ανάλυση του αρχείου...")
+                
+                try {
+                    val contentResolver = context.contentResolver
+                    val mimeType = contentResolver.getType(selectedUri) ?: "application/octet-stream"
+                    val inputStream = contentResolver.openInputStream(selectedUri)
+                    val bytes = inputStream?.readBytes()
+                    inputStream?.close()
+
+                    if (bytes != null) {
+                        val analysis = aiRepository.analyzeMedicalFile(bytes, mimeType)
+                        chatMessages.add("AI" to analysis)
+                    } else {
+                        chatMessages.add("System" to "Αποτυχία ανάγνωσης αρχείου.")
+                    }
+                } catch (e: Exception) {
+                    chatMessages.add("System" to "Σφάλμα: ${e.localizedMessage}")
+                } finally {
+                    chatLoading = false
+                }
+            }
         }
     }
 
